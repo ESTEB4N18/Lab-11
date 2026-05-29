@@ -38,8 +38,8 @@ Referencia del run:
 
 - Workflow: `CI - BovWeight CR`
 - Run: `26649234557`
-- Inicio: `11:24`
-- Fin: `11:26` 
+- Inicio: `11:24 a.m`
+- Fin: `11:26 a.m` 
 
 El job principal del frontend, `app-ci`, tardo **1 minuto 35 segundos**. El step mas lento fue:
 
