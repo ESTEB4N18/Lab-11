@@ -75,7 +75,6 @@ jobs:
   laravel-tests:
     name: laravel-tests
     needs: detect-project
-    if: needs.detect-project.outputs.is_laravel == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -115,13 +114,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Mark Laravel tests as not applicable
+        if: needs.detect-project.outputs.is_laravel != 'true'
+        run: |
+          echo "No Laravel project detected in this repository."
+          echo "Laravel test suite is only executed when composer.json and artisan exist."
+
       - name: Validate Laravel project structure
+        if: needs.detect-project.outputs.is_laravel == 'true'
         run: |
           test -f composer.json
           test -f artisan
           test -f phpunit.xml || test -f phpunit.xml.dist
 
       - name: Setup PHP 8.2
+        if: needs.detect-project.outputs.is_laravel == 'true'
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
@@ -130,10 +137,12 @@ jobs:
           coverage: none
 
       - name: Get Composer cache directory
+        if: needs.detect-project.outputs.is_laravel == 'true'
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer downloads
+        if: needs.detect-project.outputs.is_laravel == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
@@ -143,9 +152,11 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install PHP dependencies
+        if: needs.detect-project.outputs.is_laravel == 'true'
         run: composer install --prefer-dist --no-interaction --no-progress --ansi
 
       - name: Prepare Laravel environment
+        if: needs.detect-project.outputs.is_laravel == 'true'
         run: |
           if [ -f .env.example ]; then
             cp .env.example .env
@@ -181,6 +192,7 @@ jobs:
           php artisan key:generate --force --ansi
 
       - name: Validate MySQL connection
+        if: needs.detect-project.outputs.is_laravel == 'true'
         run: |
           php -r '
           $dsn = "mysql:host=127.0.0.1;port=3306;dbname=bovweight_test";
@@ -199,15 +211,18 @@ jobs:
           '
 
       - name: Clear and cache Laravel configuration
+        if: needs.detect-project.outputs.is_laravel == 'true'
         run: |
           php artisan config:clear --ansi
           php artisan cache:clear --ansi
           php artisan config:cache --ansi
 
       - name: Run database migrations
+        if: needs.detect-project.outputs.is_laravel == 'true'
         run: php artisan migrate --force --no-interaction --ansi
 
       - name: Run PHPUnit test suite
+        if: needs.detect-project.outputs.is_laravel == 'true'
         run: |
           if php -r '$composer = json_decode(file_get_contents("composer.json"), true); exit(isset($composer["scripts"]["test"]) ? 0 : 1);'; then
             composer test
