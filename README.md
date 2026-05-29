@@ -22,4 +22,8 @@ El workflow Laravel solicitado se encuentra en:
 
 - [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
-Nota: este checkout corresponde al app Ionic/Vue. El workflow `.github/workflows/ci.yml` esta preparado para el repositorio `bovweight-api` de Laravel y valida al inicio que existan `composer.json`, `artisan` y PHPUnit.
+El workflow tambien ejecuta CI real para este repo Ionic/Vue mediante el job `app-ci`.
+
+Para configurar branch protection por API:
+
+- [scripts/configure-branch-protection.ps1](scripts/configure-branch-protection.ps1)

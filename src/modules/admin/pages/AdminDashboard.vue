@@ -402,8 +402,8 @@ import {
   IonModal, IonItem, IonLabel, IonInput, IonSelect, IonSelectOption,
   IonSegment, IonSegmentButton
 } from '@ionic/vue';
-import { 
-  logOutOutline, shieldCheckmarkOutline, peopleOutline, settingsOutline, 
+import {
+  logOutOutline, shieldCheckmarkOutline, peopleOutline,
   pieChartOutline, listOutline, addOutline, trendingUpOutline, trashOutline,
   leafOutline, medkitOutline, pulseOutline, removeOutline, mailOutline, calendarOutline
 } from 'ionicons/icons';

@@ -2,7 +2,12 @@
 
 ## Alcance del analisis
 
-Este checkout contiene el frontend `bovweight-app` de BovWeight CR, construido con Ionic, Vue 3, Vite y Node.js. En esta carpeta no existen `composer.json`, `artisan`, `phpunit.xml`, `requirements.txt`, `pyproject.toml` ni una aplicacion Flask; por tanto, el workflow Laravel agregado en `.github/workflows/ci.yml` esta listo para usarse en el repositorio `bovweight-api` y fallara de forma temprana si se ejecuta accidentalmente en este repo del app.
+Este checkout contiene el frontend `bovweight-app` de BovWeight CR, construido con Ionic, Vue 3, Vite y Node.js. En esta carpeta no existen `composer.json`, `artisan`, `phpunit.xml`, `requirements.txt`, `pyproject.toml` ni una aplicacion Flask.
+
+Por esa razon, `.github/workflows/ci.yml` quedo preparado para ambos escenarios:
+
+- En este repo Ionic/Vue ejecuta `app-ci` con Node.js 20, `npm ci`, `npm run lint` y `npm run build`.
+- En `bovweight-api` ejecuta `laravel-tests` con PHP 8.2, Composer, MySQL, migraciones y PHPUnit.
 
 Comandos detectados en el repo actual:
 
@@ -16,7 +21,7 @@ npm run preview
 
 Resultado local al analizar este checkout:
 
-- `npm run lint` falla por variables no usadas y un bloque vacio existentes.
+- `npm run lint` pasa correctamente.
 - Antes de refrescar dependencias, `npm run build` fallaba porque el `node_modules` local no tenia disponible `@supabase/supabase-js`.
 - Despues de ejecutar `npm ci`, `npm run build` pasa correctamente, con advertencias de chunks grandes de Vite/Rollup.
 - `npm ci` reporta 10 vulnerabilidades npm audit: 4 moderadas y 6 altas.
@@ -29,12 +34,14 @@ Resultado local al analizar este checkout:
     ci.yml
 docs/
   devops-ci-cd.md
+scripts/
+  configure-branch-protection.ps1
 README.md
 ```
 
-## Pipeline Laravel
+## Pipeline CI
 
-El workflow `CI - Laravel API` se ejecuta en:
+El workflow `CI - BovWeight CR` se ejecuta en:
 
 - `push` a `main`
 - `push` a `develop`
@@ -45,7 +52,13 @@ El workflow `CI - Laravel API` se ejecuta en:
 
 La rama `feature/**` se incluye porque la estrategia del laboratorio exige CI en cada push de feature. `pull_request` hacia `develop` se incluye para validar merges normales de features.
 
-Steps del workflow:
+Jobs del workflow:
+
+1. `detect-project`: detecta si el repositorio contiene Laravel (`composer.json` + `artisan`) o Node (`package.json` + `package-lock.json`).
+2. `app-ci`: corre solo para Ionic/Vue. Instala Node.js 20, restaura cache npm, instala dependencias, ejecuta lint y genera build de produccion.
+3. `laravel-tests`: corre solo para Laravel. Levanta MySQL, prepara `.env`, ejecuta migraciones y PHPUnit.
+
+Steps principales de `laravel-tests`:
 
 1. `Checkout repository`: descarga el codigo fuente en el runner.
 2. `Validate Laravel project structure`: exige `composer.json`, `artisan` y `phpunit.xml` o `phpunit.xml.dist`; si no estan, el CI falla con una causa clara.
@@ -59,7 +72,10 @@ Steps del workflow:
 10. `Run database migrations`: ejecuta `php artisan migrate --force`.
 11. `Run PHPUnit test suite`: usa `composer test` si existe; si no, `vendor/bin/phpunit`; como fallback, `php artisan test`.
 
-El job se llama `laravel-tests`. Ese es el status check que debe marcarse como obligatorio en GitHub.
+Status checks recomendados:
+
+- Para `bovweight-api`: `laravel-tests`.
+- Para este repo Ionic/Vue: `app-ci`.
 
 ## Variables de entorno usadas en CI
 
@@ -151,7 +167,7 @@ composer test
 - Agregar Pint/PHPStan/Psalm si el API ya los usa.
 - Usar matriz para PHP 8.2 y 8.3 cuando el proyecto madure.
 - Publicar cobertura como artifact o integrarla con Codecov.
-- Agregar CI propio para `bovweight-app` con Node 20, `npm ci`, `npm run lint` y `npm run build`.
+- Agregar tests unitarios al `bovweight-app` para que el CI valide comportamiento, no solo lint/build.
 - Agregar CI propio para `bovweight-ml` con Python 3.11, entorno virtual, dependencias y `pytest`.
 
 ## Estrategia de ramas
@@ -194,7 +210,7 @@ Regla para `main`:
 - Activar `Require approvals` y colocar `1`
 - Activar `Require status checks to pass before merging`
 - Activar `Require branches to be up to date before merging`
-- Agregar status check obligatorio: `laravel-tests`
+- Agregar status check obligatorio: `laravel-tests` en `bovweight-api` o `app-ci` en este repo
 - Activar `Do not allow bypassing the above settings`
 - Dejar desactivado `Allow force pushes`
 - Dejar desactivado `Allow deletions`
@@ -205,12 +221,12 @@ Regla para `develop`:
 - Activar `Require a pull request before merging`
 - Activar `Require status checks to pass before merging`
 - Activar `Require branches to be up to date before merging`
-- Agregar status check obligatorio: `laravel-tests`
+- Agregar status check obligatorio: `laravel-tests` en `bovweight-api` o `app-ci` en este repo
 - Activar `Do not allow bypassing the above settings`
 - Dejar desactivado `Allow force pushes`
 - Dejar desactivado `Allow deletions`
 
-Para bloquear merges sin CI exitoso, el punto critico es que `laravel-tests` este seleccionado en `Require status checks to pass before merging`.
+Para bloquear merges sin CI exitoso, el punto critico es que el job correcto (`laravel-tests` o `app-ci`) este seleccionado en `Require status checks to pass before merging`.
 
 Para squash merge en `develop`, ir a `Settings > General > Pull Requests`:
 
@@ -229,6 +245,36 @@ GitHub classic branch protection no permite restringir por si sola que una rama 
 6. Intentar push directo a `main`; debe ser rechazado.
 7. Intentar force push a `main`; debe ser rechazado.
 
+## Configuracion automatizada con script
+
+El archivo `scripts/configure-branch-protection.ps1` configura `main` y `develop` usando la API de GitHub. Tambien crea `develop` desde `main` si todavia no existe.
+
+Requiere un token con permisos de administracion del repositorio. No se debe commitear el token.
+
+Para este repo Ionic/Vue:
+
+```powershell
+$env:GH_ADMIN_TOKEN = "TOKEN_CON_PERMISOS_ADMIN"
+.\scripts\configure-branch-protection.ps1 `
+  -Owner "ESTEB4N18" `
+  -Repo "Lab-11" `
+  -Token $env:GH_ADMIN_TOKEN `
+  -MainStatusCheck "app-ci" `
+  -DevelopStatusCheck "app-ci"
+```
+
+Para `bovweight-api`:
+
+```powershell
+$env:GH_ADMIN_TOKEN = "TOKEN_CON_PERMISOS_ADMIN"
+.\scripts\configure-branch-protection.ps1 `
+  -Owner "OWNER" `
+  -Repo "bovweight-api" `
+  -Token $env:GH_ADMIN_TOKEN `
+  -MainStatusCheck "laravel-tests" `
+  -DevelopStatusCheck "laravel-tests"
+```
+
 ## Comandos GitHub CLI opcionales
 
 Reemplazar `OWNER` y `REPO` antes de ejecutar:
@@ -237,7 +283,7 @@ Reemplazar `OWNER` y `REPO` antes de ejecutar:
 gh api repos/OWNER/REPO/branches/main/protection \
   --method PUT \
   --field required_status_checks[strict]=true \
-  --field required_status_checks[contexts][]=laravel-tests \
+  --field required_status_checks[contexts][]=app-ci \
   --field enforce_admins=true \
   --field required_pull_request_reviews[required_approving_review_count]=1 \
   --field restrictions=null \
@@ -247,7 +293,7 @@ gh api repos/OWNER/REPO/branches/main/protection \
 gh api repos/OWNER/REPO/branches/develop/protection \
   --method PUT \
   --field required_status_checks[strict]=true \
-  --field required_status_checks[contexts][]=laravel-tests \
+  --field required_status_checks[contexts][]=app-ci \
   --field enforce_admins=true \
   --field required_pull_request_reviews[required_approving_review_count]=0 \
   --field restrictions=null \

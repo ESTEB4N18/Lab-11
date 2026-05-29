@@ -169,7 +169,9 @@ export const adminService = {
     try {
       const { count } = await supabase.from('alertas_medicas').select('*', { count: 'exact', head: true });
       alertasCount = count || 0;
-    } catch(e) {}
+    } catch {
+      alertasCount = 0;
+    }
 
     return {
       personalActivo: personalCount || 0,

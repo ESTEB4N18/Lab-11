@@ -1,4 +1,4 @@
-name: CI - Laravel API
+name: CI - BovWeight CR
 
 on:
   push:
@@ -16,12 +16,66 @@ permissions:
   contents: read
 
 concurrency:
-  group: laravel-ci-${{ github.ref }}
+  group: bovweight-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  detect-project:
+    name: detect-project
+    runs-on: ubuntu-latest
+    outputs:
+      is_laravel: ${{ steps.detect.outputs.is_laravel }}
+      is_node: ${{ steps.detect.outputs.is_node }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect project type
+        id: detect
+        run: |
+          if [ -f composer.json ] && [ -f artisan ]; then
+            echo "is_laravel=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_laravel=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f package.json ] && [ -f package-lock.json ]; then
+            echo "is_node=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_node=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  app-ci:
+    name: app-ci
+    needs: detect-project
+    if: needs.detect-project.outputs.is_node == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run frontend lint
+        run: npm run lint
+
+      - name: Build Ionic Vue app
+        run: npm run build
+
   laravel-tests:
     name: laravel-tests
+    needs: detect-project
+    if: needs.detect-project.outputs.is_laravel == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
