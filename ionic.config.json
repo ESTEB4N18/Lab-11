@@ -1,0 +1,7 @@
+{
+  "name": "bovweight-cr",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite"
+}

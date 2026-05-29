@@ -1,0 +1,106 @@
+/*
+ * BovWeight CR — Tema Personalizado
+ * Paleta moderna agrícola con tonos verdes
+ */
+
+/* ── Importar fuente de Google ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Sobrescribir variables de Ionic ── */
+:root {
+  --ion-color-primary: #2E7D32;
+  --ion-color-primary-rgb: 46, 125, 50;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #28702C;
+  --ion-color-primary-tint: #438A47;
+
+  --ion-color-secondary: #558B2F;
+  --ion-color-secondary-rgb: 85, 139, 47;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #4B7A29;
+  --ion-color-secondary-tint: #669744;
+
+  --ion-color-tertiary: #8D6E63;
+  --ion-color-tertiary-rgb: 141, 110, 99;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #7C6157;
+  --ion-color-tertiary-tint: #987D73;
+
+  --ion-color-success: #43A047;
+  --ion-color-success-rgb: 67, 160, 71;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #3B8D3E;
+  --ion-color-success-tint: #56AA59;
+
+  --ion-color-warning: #FF8F00;
+  --ion-color-warning-rgb: 255, 143, 0;
+  --ion-color-warning-contrast: #000000;
+  --ion-color-warning-contrast-rgb: 0, 0, 0;
+  --ion-color-warning-shade: #E07E00;
+  --ion-color-warning-tint: #FF9B1A;
+
+  --ion-color-danger: #D32F2F;
+  --ion-color-danger-rgb: 211, 47, 47;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #BA2929;
+  --ion-color-danger-tint: #D84444;
+
+  /* Fondo */
+  --ion-background-color: #f4f7f0;
+  --ion-background-color-rgb: 244, 247, 240;
+
+  /* Barra de herramientas */
+  --ion-toolbar-background: #ffffff;
+  --ion-toolbar-color: #1B5E20;
+
+  /* Tipografía */
+  --ion-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Estilos globales ── */
+body {
+  font-family: var(--ion-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+ion-toolbar {
+  --border-width: 0;
+}
+
+ion-title {
+  font-weight: 700;
+}
+
+ion-content {
+  --padding-top: 0;
+}
+
+/* Tamaños mínimos para pantallas táctiles */
+ion-button {
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  min-height: 48px;
+  font-weight: 600;
+}
+
+/* Transiciones de página suaves */
+.ion-page {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
