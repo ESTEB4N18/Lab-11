@@ -1,0 +1,164 @@
+name: CI - Laravel API
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "hotfix/**"
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: laravel-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  laravel-tests:
+    name: laravel-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bovweight_test
+          MYSQL_USER: bovweight
+          MYSQL_PASSWORD: secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: true
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: bovweight_test
+      DB_USERNAME: bovweight
+      DB_PASSWORD: secret
+      CACHE_DRIVER: array
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      BCRYPT_ROUNDS: 4
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Laravel project structure
+        run: |
+          test -f composer.json
+          test -f artisan
+          test -f phpunit.xml || test -f phpunit.xml.dist
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: bcmath, ctype, curl, dom, fileinfo, filter, intl, mbstring, openssl, pdo_mysql, tokenizer, xml, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php-8.2-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.2-composer-
+            ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress --ansi
+
+      - name: Prepare Laravel environment
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            touch .env
+          fi
+
+          set_env () {
+            key="$1"
+            value="$2"
+            if grep -q "^${key}=" .env; then
+              sed -i "s|^${key}=.*|${key}=${value}|" .env
+            else
+              echo "${key}=${value}" >> .env
+            fi
+          }
+
+          set_env APP_ENV testing
+          set_env APP_DEBUG true
+          set_env DB_CONNECTION mysql
+          set_env DB_HOST 127.0.0.1
+          set_env DB_PORT 3306
+          set_env DB_DATABASE bovweight_test
+          set_env DB_USERNAME bovweight
+          set_env DB_PASSWORD secret
+          set_env CACHE_DRIVER array
+          set_env CACHE_STORE array
+          set_env SESSION_DRIVER array
+          set_env QUEUE_CONNECTION sync
+          set_env MAIL_MAILER array
+          set_env BCRYPT_ROUNDS 4
+
+          php artisan key:generate --force --ansi
+
+      - name: Validate MySQL connection
+        run: |
+          php -r '
+          $dsn = "mysql:host=127.0.0.1;port=3306;dbname=bovweight_test";
+          for ($i = 1; $i <= 30; $i++) {
+              try {
+                  new PDO($dsn, "bovweight", "secret");
+                  fwrite(STDOUT, "MySQL is ready\n");
+                  exit(0);
+              } catch (Throwable $e) {
+                  fwrite(STDOUT, "Waiting for MySQL ({$i}/30)\n");
+                  sleep(2);
+              }
+          }
+          fwrite(STDERR, "MySQL was not ready in time\n");
+          exit(1);
+          '
+
+      - name: Clear and cache Laravel configuration
+        run: |
+          php artisan config:clear --ansi
+          php artisan cache:clear --ansi
+          php artisan config:cache --ansi
+
+      - name: Run database migrations
+        run: php artisan migrate --force --no-interaction --ansi
+
+      - name: Run PHPUnit test suite
+        run: |
+          if php -r '$composer = json_decode(file_get_contents("composer.json"), true); exit(isset($composer["scripts"]["test"]) ? 0 : 1);'; then
+            composer test
+          elif [ -x vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --colors=always
+          else
+            php artisan test --colors=always
+          fi
