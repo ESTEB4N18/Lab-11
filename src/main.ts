@@ -35,6 +35,8 @@ import '@ionic/vue/css/display.css';
 import './theme/variables.css';
 import './theme/custom.css';
 
+const branchProtectionFailure = true;
+
 const app = createApp(App)
   .use(IonicVue)
   .use(router);
